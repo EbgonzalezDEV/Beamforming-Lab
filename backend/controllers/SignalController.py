@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from ..models.ConfigModel import ConfigModel
-from ..models.ResultsModel import ResultsModel
-from ..services.SignalService import SignalService
+from models.ConfigModel import ConfigModel
+from models.ResultsModel import ResultsModel
+from services.SignalService import SignalService
 
 router = APIRouter(prefix="/api", tags=["signal"])
 _service = SignalService()

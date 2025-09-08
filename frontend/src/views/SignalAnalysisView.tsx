@@ -7,6 +7,8 @@ interface ResultsDto {
 	snr: number | null;
 	path_loss: number | null;
 	spectrum: SpectrumPoint[];
+	system?: string | null;
+	bandwidth_hz?: number | null;
 }
 
 export default function SignalAnalysisView() {
@@ -35,7 +37,7 @@ export default function SignalAnalysisView() {
 		<div className="text-white p-1 md:p-2">
 			<div className="max-w-7xl mx-auto space-y-6">
 				<h1 className="text-2xl md:text-3xl font-bold">Análisis de Señal</h1>
-				<p className="text-slate-300 text-sm">Resultados calculados a partir de la configuración: potencia recibida, SNR, pérdida en espacio libre (FSPL) y espectro.</p>
+				<p className="text-slate-300 text-sm">Resultados: potencia recibida, SNR, FSPL y espectro. Sistema: {data?.system ?? '-'} · B = {data?.bandwidth_hz ? `${(data.bandwidth_hz/1e6).toFixed(0)} MHz` : '-'}</p>
 
 				{error && <div className="bg-red-900/40 border border-red-700 p-4 rounded-lg">{error}</div>}
 

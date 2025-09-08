@@ -13,5 +13,6 @@ class ResultsModel(BaseModel):
 	path_loss: Optional[float]
 	spectrum: List[SpectrumPoint]
 	system: Optional[str]
+	bandwidth_hz: Optional[float] = None
 
 

@@ -16,7 +16,15 @@ class SignalService:
 		fspl_db = float(self.fspl(distance_m, frequency_hz))
 		power_tx_dbm = float(power_dbm)
 
-		# Ajuste simple por sistema (ejemplo): 5G-A +3 dB, 6G +6 dB de mejora efectiva
+		# Suposiciones basadas en los documentos: diferente B segun sistema (aprox.)
+		bandwidth_map = {
+			'5G': 20e6,   # 20 MHz
+			'5G-A': 80e6, # 80 MHz (carrier aggregation / mejoras)
+			'6G': 200e6,  # 200 MHz (ultra wideband)
+		}
+		bandwidth_hz = float(bandwidth_map.get(system, 20e6))
+
+		# Ganancia efectiva del sistema por beamforming/mejoras
 		system_gain = 0.0
 		if system == '5G-A':
 			system_gain = 3.0
@@ -25,7 +33,9 @@ class SignalService:
 
 		power_rx_dbm = float(power_tx_dbm - fspl_db + system_gain)
 
-		noise_floor_dbm = -100.0
+		# Ruido: kTB en dBm = -174 dBm/Hz + 10*log10(B) + NF
+		noise_figure_db = 5.0
+		noise_floor_dbm = -174.0 + 10 * np.log10(bandwidth_hz) + noise_figure_db
 		snr_db = float(power_rx_dbm - noise_floor_dbm)
 
 		duration_s = 0.01
@@ -50,6 +60,7 @@ class SignalService:
 			"path_loss": fspl_db,
 			"spectrum": spectrum[:2000],
 			"system": system,
+			"bandwidth_hz": bandwidth_hz,
 		}
 		return self._last_results
 
@@ -60,4 +71,5 @@ class SignalService:
 			"path_loss": None,
 			"spectrum": [],
 			"system": None,
+			"bandwidth_hz": None,
 		}
