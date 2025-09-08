@@ -32,9 +32,10 @@ export default function SignalAnalysisView() {
 	}, []);
 
 	return (
-		<div className="min-h-screen bg-slate-900 text-white p-6">
+		<div className="text-white p-1 md:p-2">
 			<div className="max-w-7xl mx-auto space-y-6">
-				<h1 className="text-3xl font-bold">Beamforming Lab - Análisis de Señal</h1>
+				<h1 className="text-2xl md:text-3xl font-bold">Análisis de Señal</h1>
+				<p className="text-slate-300 text-sm">Resultados calculados a partir de la configuración: potencia recibida, SNR, pérdida en espacio libre (FSPL) y espectro.</p>
 
 				{error && <div className="bg-red-900/40 border border-red-700 p-4 rounded-lg">{error}</div>}
 
@@ -78,6 +79,12 @@ export default function SignalAnalysisView() {
 				</div>
 
 				{loading && <div className="text-slate-300">Cargando resultados...</div>}
+
+				{!loading && !error && !data && (
+					<div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 text-sm text-slate-300">
+						Ejecuta una simulación desde la vista de configuración para ver resultados aquí.
+					</div>
+				)}
 			</div>
 		</div>
 	);

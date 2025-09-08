@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from ..models.ConfigModel import ConfigModel
+from ..models.ResultsModel import ResultsModel
 from ..services.SignalService import SignalService
 
 router = APIRouter(prefix="/api", tags=["signal"])
@@ -17,6 +18,6 @@ def configure(config: ConfigModel):
 	return {"status": "ok", "results": results}
 
 
-@router.get("/results")
-def get_results():
-	return _service.last_results()
+@router.get("/results", response_model=ResultsModel)
+def get_results() -> ResultsModel:
+	return ResultsModel(**_service.last_results())

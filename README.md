@@ -22,18 +22,16 @@ src/
 
 ## Backend (FastAPI)
 
-1) Crear/activar el entorno e instalar dependencias:
+1) Crear/activar el entorno e instalar dependencias (usa el requirements.txt del backend):
 ```powershell
 python -m venv venv
 venv\Scripts\python -m pip install --upgrade pip
-venv\Scripts\pip install fastapi uvicorn numpy scipy
+venv\Scripts\pip install -r backend/requirements.txt
 ```
 
-2) Ejecutar el backend:
+2) Ejecutar el backend (desde la carpeta raíz del proyecto):
 ```powershell
-cd backend
-..
-venv\Scripts\python -m uvicorn main:app --reload --port 8000
+venv\Scripts\python -m uvicorn backend.main:app --reload --port 8000
 ```
 
 Endpoints:
@@ -68,15 +66,9 @@ Vite mostrará la URL, por ejemplo `http://localhost:5173`.
 - Fondo laboratorio `bg-slate-900`.
 - Tarjetas con `bg-slate-800`, bordes redondeados y sombras.
 
-## Archivos de arranque
-- Backend: iniciar en `backend/main.py` usando:
-```powershell
-venv\Scripts\uvicorn main:app --reload --port 8000
-```
-- Frontend: iniciar en `src/main.tsx` con:
-```powershell
-npm run dev
-```
+## Arranque rápido
+- Backend (terminal 1): `venv\Scripts\python -m uvicorn backend.main:app --reload --port 8000`
+- Frontend (terminal 2): `cd frontend && npm install && npm run dev`
 
 ## Notas
 - CORS está habilitado para `localhost` por simplicidad.

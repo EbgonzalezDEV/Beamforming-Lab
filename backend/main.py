@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from controllers.SignalController import router as signal_router
+from controllers.HealthController import router as health_router
 
 app = FastAPI(title="Beamforming Lab API")
 
@@ -14,6 +15,7 @@ app.add_middleware(
 )
 
 app.include_router(signal_router)
+app.include_router(health_router)
 
 
 @app.get("/")
