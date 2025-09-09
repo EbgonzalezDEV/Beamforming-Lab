@@ -38,13 +38,20 @@ class SignalService:
 		noise_floor_dbm = -174.0 + 10 * np.log10(bandwidth_hz) + noise_figure_db
 		snr_db = float(power_rx_dbm - noise_floor_dbm)
 
-		duration_s = 0.01
-		sample_rate = 100_000
+		# Simulación en banda base: tono bajo (por ejemplo 10 kHz) + ruido ajustado a la SNR
+		baseband_tone_hz = 10_000.0
+		duration_s = 0.02
+		sample_rate = 500_000  # 500 kHz para representar bien 10 kHz
 		t = np.arange(0, duration_s, 1 / sample_rate)
-		amplitude = 1.0
-		signal = amplitude * np.sin(2 * np.pi * frequency_hz * t)
-		noise = np.random.normal(0, 0.1, size=t.shape)
-		received = signal * 10 ** (power_rx_dbm / 20) + noise
+
+		# Ajuste de amplitudes relativas según SNR: SNR_linear = (A_s^2)/(A_n^2)
+		snr_linear = 10 ** (snr_db / 10)
+		amplitude_signal = 1.0
+		amplitude_noise = np.sqrt(amplitude_signal ** 2 / snr_linear)
+
+		signal = amplitude_signal * np.sin(2 * np.pi * baseband_tone_hz * t)
+		noise = np.random.normal(0, amplitude_noise, size=t.shape)
+		received = signal + noise
 
 		y = rfft(received)
 		freqs = rfftfreq(received.size, 1 / sample_rate)

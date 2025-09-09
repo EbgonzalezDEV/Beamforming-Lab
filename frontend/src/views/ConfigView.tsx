@@ -8,6 +8,8 @@ interface ConfigViewProps {
 
 export const ConfigView: FC<ConfigViewProps> = ({ onRunSimulation, isLoading = false }) => {
   const [config, setConfig] = useState<ConfigModel>(new ConfigModel());
+  const [powerUnit, setPowerUnit] = useState<'dBm' | 'dBW'>('dBm');
+  const [distanceUnit, setDistanceUnit] = useState<'m' | 'km'>('m');
 
   const handleConfigChange = (key: 'frequency' | 'power' | 'distance' | 'system', value: number | string) => {
     const newConfig = new ConfigModel(
@@ -25,6 +27,9 @@ export const ConfigView: FC<ConfigViewProps> = ({ onRunSimulation, isLoading = f
   };
 
   const formatValue = (value: number, unit: string) => `${value} ${unit}`;
+  const toDisplayPower = (dbm: number) => powerUnit === 'dBm' ? dbm : (dbm - 30);
+  const toDisplayDistance = (m: number) => distanceUnit === 'm' ? m : (m / 1000);
+  const fromDisplayDistance = (val: number) => distanceUnit === 'm' ? val : (val * 1000);
 
   const SYSTEM_BG: Record<ConfigModel['system'], string> = {
     '5G': '#0b1220',
@@ -79,7 +84,14 @@ export const ConfigView: FC<ConfigViewProps> = ({ onRunSimulation, isLoading = f
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-green-300">⚡ Potencia: {formatValue(config.power, 'dBm')}</label>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-green-300">⚡ Potencia: {formatValue(toDisplayPower(config.power), powerUnit)}</label>
+                <div className="flex gap-2">
+                  {(['dBm','dBW'] as const).map(u => (
+                    <button key={u} type="button" disabled={isLoading} onClick={() => setPowerUnit(u)} className={`px-2 py-1 rounded-md text-xs border ${powerUnit===u?'bg-indigo-600 border-indigo-500 text-white':'bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600'}`}>{u}</button>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
                 <div className="md:col-span-5">
                   <input type="range" min={CONFIG_LIMITS.power.min} max={CONFIG_LIMITS.power.max} step={CONFIG_LIMITS.power.step} value={config.power} onChange={(e) => handleConfigChange('power', parseInt(e.target.value))} className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider" disabled={isLoading} />
@@ -87,22 +99,29 @@ export const ConfigView: FC<ConfigViewProps> = ({ onRunSimulation, isLoading = f
                 <div>
                   <input
                     type="number"
-                    min={CONFIG_LIMITS.power.min}
-                    max={CONFIG_LIMITS.power.max}
+                    min={powerUnit==='dBm'?CONFIG_LIMITS.power.min:CONFIG_LIMITS.power.min-30}
+                    max={powerUnit==='dBm'?CONFIG_LIMITS.power.max:CONFIG_LIMITS.power.max-30}
                     step={CONFIG_LIMITS.power.step}
-                    value={config.power}
-                    onChange={(e) => handleConfigChange('power', Number(e.target.value))}
+                    value={toDisplayPower(config.power)}
+                    onChange={(e) => handleConfigChange('power', powerUnit==='dBm'? Number(e.target.value) : Number(e.target.value) + 30)}
                     className="w-full p-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-100"
                     disabled={isLoading}
                   />
                 </div>
               </div>
-              <div className="flex justify-between text-xs text-slate-400"><span>{CONFIG_LIMITS.power.min} dBm</span><span>{CONFIG_LIMITS.power.max} dBm</span></div>
+              <div className="flex justify-between text-xs text-slate-400"><span>{powerUnit==='dBm'?CONFIG_LIMITS.power.min:CONFIG_LIMITS.power.min-30} {powerUnit}</span><span>{powerUnit==='dBm'?CONFIG_LIMITS.power.max:CONFIG_LIMITS.power.max-30} {powerUnit}</span></div>
               <div className="text-xs text-slate-400">Una mayor potencia de transmisión puede mejorar la SNR, hasta los límites regulatorios.</div>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-purple-300">📏 Distancia: {formatValue(config.distance, 'm')}</label>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-purple-300">📏 Distancia: {formatValue(toDisplayDistance(config.distance), distanceUnit)}</label>
+                <div className="flex gap-2">
+                  {(['m','km'] as const).map(u => (
+                    <button key={u} type="button" disabled={isLoading} onClick={() => setDistanceUnit(u)} className={`px-2 py-1 rounded-md text-xs border ${distanceUnit===u?'bg-indigo-600 border-indigo-500 text-white':'bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600'}`}>{u}</button>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
                 <div className="md:col-span-5">
                   <input type="range" min={CONFIG_LIMITS.distance.min} max={CONFIG_LIMITS.distance.max} step={CONFIG_LIMITS.distance.step} value={config.distance} onChange={(e) => handleConfigChange('distance', parseInt(e.target.value))} className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider" disabled={isLoading} />
@@ -110,17 +129,17 @@ export const ConfigView: FC<ConfigViewProps> = ({ onRunSimulation, isLoading = f
                 <div>
                   <input
                     type="number"
-                    min={CONFIG_LIMITS.distance.min}
-                    max={CONFIG_LIMITS.distance.max}
-                    step={CONFIG_LIMITS.distance.step}
-                    value={config.distance}
-                    onChange={(e) => handleConfigChange('distance', Number(e.target.value))}
+                    min={distanceUnit==='m'?CONFIG_LIMITS.distance.min:CONFIG_LIMITS.distance.min/1000}
+                    max={distanceUnit==='m'?CONFIG_LIMITS.distance.max:CONFIG_LIMITS.distance.max/1000}
+                    step={distanceUnit==='m'?CONFIG_LIMITS.distance.step:CONFIG_LIMITS.distance.step/1000}
+                    value={toDisplayDistance(config.distance)}
+                    onChange={(e) => handleConfigChange('distance', fromDisplayDistance(Number(e.target.value)))}
                     className="w-full p-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-100"
                     disabled={isLoading}
                   />
                 </div>
               </div>
-              <div className="flex justify-between text-xs text-slate-400"><span>{CONFIG_LIMITS.distance.min} m</span><span>{CONFIG_LIMITS.distance.max} m</span></div>
+              <div className="flex justify-between text-xs text-slate-400"><span>{distanceUnit==='m'?CONFIG_LIMITS.distance.min:CONFIG_LIMITS.distance.min/1000} {distanceUnit}</span><span>{distanceUnit==='m'?CONFIG_LIMITS.distance.max:CONFIG_LIMITS.distance.max/1000} {distanceUnit}</span></div>
               <div className="text-xs text-slate-400">La pérdida de trayecto aumenta con la distancia, degradando la potencia recibida.</div>
             </div>
 

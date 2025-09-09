@@ -11,3 +11,4 @@ def test_openapi_available(client):
 	assert resp.status_code == 200
 	assert "paths" in resp.json()
 
+
