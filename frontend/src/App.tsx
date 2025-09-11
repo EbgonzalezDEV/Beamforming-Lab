@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { ConfigView } from './views/ConfigView';
 import SignalAnalysisView from './views/SignalAnalysisView';
 import { ConfigModel } from './models/ConfigModel';

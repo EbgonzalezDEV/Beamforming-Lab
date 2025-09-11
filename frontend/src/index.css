@@ -1,6 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-white/10;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-dark-900 via-dark-800 to-dark-700 text-white font-sans;
+    background-attachment: fixed;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl;
+  }
+  
+  .glass-card-strong {
+    @apply bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl;
+  }
+  
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary-500 to-primary-600;
+  }
+  
+  .gradient-secondary {
+    @apply bg-gradient-to-r from-secondary-500 to-secondary-600;
+  }
+  
+  .gradient-accent {
+    @apply bg-gradient-to-r from-accent-500 to-accent-600;
+  }
+  
+  .btn-primary {
+    @apply px-6 py-3 rounded-xl font-semibold text-white gradient-primary hover:shadow-glow transition-all duration-300 transform hover:scale-105 active:scale-95;
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-semibold text-white gradient-secondary hover:shadow-glow-purple transition-all duration-300 transform hover:scale-105 active:scale-95;
+  }
+  
+  .btn-accent {
+    @apply px-6 py-3 rounded-xl font-semibold text-white gradient-accent hover:shadow-glow-green transition-all duration-300 transform hover:scale-105 active:scale-95;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300;
+  }
+  
+  .slider-custom {
+    @apply w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer;
+  }
+  
+  .slider-custom::-webkit-slider-thumb {
+    @apply appearance-none h-6 w-6 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 cursor-pointer shadow-lg;
+  }
+  
+  .slider-custom::-moz-range-thumb {
+    @apply h-6 w-6 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 cursor-pointer border-0 shadow-lg;
+  }
+  
+  .metric-card {
+    @apply glass-card p-6 hover:bg-white/10 transition-all duration-300;
+  }
+  
+  .nav-item {
+    @apply flex items-center px-4 py-3 rounded-xl font-medium transition-all duration-300 hover:bg-white/10;
+  }
+  
+  .nav-item-active {
+    @apply bg-white/20 text-white shadow-lg;
+  }
+  
+  .icon-wrapper {
+    @apply w-10 h-10 rounded-xl flex items-center justify-center;
+  }
+  
+  .pulse-animation {
+    @apply animate-pulse-slow;
+  }
+  
+  .fade-in {
+    @apply animate-fade-in;
+  }
+  
+  .slide-up {
+    @apply animate-slide-up;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-accent {
+    @apply bg-gradient-to-r from-accent-400 to-primary-400 bg-clip-text text-transparent;
+  }
+}
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
