@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line } from 'recharts';
 import { 
   BarChart3, 
   Zap, 
@@ -11,9 +11,11 @@ import {
   AlertTriangle,
   Info,
   Download,
-  Share2
+  GitCompare,
+  Target
 } from 'lucide-react';
 import Modal from '../components/Modal';
+import ComparisonModal from '../components/ComparisonModal';
 
 interface SpectrumPoint { freq: number; magnitude: number }
 interface ResultsDto {
@@ -23,6 +25,16 @@ interface ResultsDto {
 	spectrum: SpectrumPoint[];
 	system?: string | null;
 	bandwidth_hz?: number | null;
+    antenna?: {
+        tx_gain_dbi: number;
+        rx_gain_dbi: number;
+        tx_polarization: 'H' | 'V';
+        rx_polarization: 'H' | 'V';
+        tx_beamwidth_deg: number;
+        rx_beamwidth_deg: number;
+        polarization_mismatch_loss_db: number;
+        antenna_gain_db: number;
+    } | null;
 }
 
 export default function SignalAnalysisView() {
@@ -30,6 +42,9 @@ export default function SignalAnalysisView() {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [openSpectrum, setOpenSpectrum] = useState(false);
+	const [openComparison, setOpenComparison] = useState(false);
+	const [comparisonData, setComparisonData] = useState<any>(null);
+	const [rangeData, setRangeData] = useState<any>(null);
 	const [freqUnit, setFreqUnit] = useState<'Hz' | 'kHz' | 'MHz' | 'GHz'>('kHz');
 	const [powerUnit] = useState<'dBm' | 'dBW'>('dBm');
 
@@ -49,6 +64,70 @@ export default function SignalAnalysisView() {
 		};
 		fetchResults();
 	}, []);
+
+	// const fetchComparisonData = async () => {
+	// 	try {
+	// 		const res = await fetch('/api/compare');
+	// 		if (res.ok) {
+	// 			const json = await res.json();
+	// 			setComparisonData(json.comparison);
+	// 		}
+	// 	} catch (e) {
+	// 		console.error('Error fetching comparison data:', e);
+	// 	}
+	// };
+
+	const fetchRangeData = async () => {
+		if (!data) return;
+		
+		try {
+			// Usar valores por defecto para la simulación de alcance
+			const res = await fetch('/api/range', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					power: 30, // 30 dBm potencia de transmisión típica
+					frequency: (data.system === '5G' ? 2400 : data.system === '5G-A' ? 3500 : 6000) * 1e6,
+					distance: 1000, // No se usa en el cálculo de alcance
+					system: data.system || '5G'
+				}),
+			});
+			if (res.ok) {
+				const json = await res.json();
+				setRangeData(json.range_data);
+			} else {
+				console.error('Error fetching range data:', res.status, res.statusText);
+			}
+		} catch (e) {
+			console.error('Error fetching range data:', e);
+		}
+	};
+
+	const handleCompareSystems = async () => {
+		if (!data) return;
+		
+		try {
+			const res = await fetch('/api/compare', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					power: 30, // 30 dBm potencia de transmisión típica
+					frequency: (data.system === '5G' ? 2400 : data.system === '5G-A' ? 3500 : 6000) * 1e6,
+					distance: 1000,
+					system: data.system || '5G'
+				}),
+			});
+			if (res.ok) {
+				const json = await res.json();
+				setComparisonData(json.comparison);
+				setOpenComparison(true);
+			} else {
+				console.error('Error comparing systems:', res.status, res.statusText);
+			}
+		} catch (e) {
+			console.error('Error comparing systems:', e);
+		}
+	};
 
 	const unitScale = useMemo(() => ({
 		'Hz': 1,
@@ -193,7 +272,7 @@ export default function SignalAnalysisView() {
 							description="Calidad de la señal recibida"
 						/>
 						<MetricCard
-							title="Pérdida de Trayecto"
+							title="Pérdida de Trayecto (FSPL)"
 							value={data.path_loss?.toFixed(2) ?? '-'}
 							unit="dB"
 							icon={Activity}
@@ -202,8 +281,47 @@ export default function SignalAnalysisView() {
 						/>
 					</div>
 
-					{/* Spectrum Analysis */}
+				{/* Antenna Summary */}
+				{data.antenna && (
 					<div className="glass-card-strong p-8">
+						<div className="flex items-center space-x-3 mb-6">
+							<div className="icon-wrapper gradient-accent">
+								<Target className="w-6 h-6 text-white" />
+							</div>
+							<h2 className="text-2xl font-bold text-white">Antenas y Ganancias</h2>
+						</div>
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+							<div className="metric-card">
+								<div className="text-primary-400 text-sm font-medium">Ganancia total de antenas</div>
+								<div className="text-3xl font-bold text-white">{data.antenna.antenna_gain_db.toFixed(2)} dB</div>
+								<div className="text-white/60 text-sm">TX + RX (dBi)</div>
+							</div>
+							<div className="metric-card">
+								<div className="text-warning-400 text-sm font-medium">Pérdida por polarización</div>
+								<div className="text-3xl font-bold text-white">{data.antenna.polarization_mismatch_loss_db.toFixed(1)} dB</div>
+								<div className="text-white/60 text-sm">0 dB si coincide, 20 dB si ortogonal</div>
+							</div>
+							<div className="metric-card">
+								<div className="text-accent-400 text-sm font-medium">Sistema</div>
+								<div className="text-3xl font-bold text-white">{data.system ?? '-'}</div>
+								<div className="text-white/60 text-sm">Contexto de simulación</div>
+							</div>
+						</div>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+							<div className="glass-card p-4">
+								<div className="text-purple-300 text-sm font-medium mb-1">Antena TX</div>
+								<div className="text-white">{data.antenna.tx_gain_dbi} dBi • {data.antenna.tx_polarization} • {data.antenna.tx_beamwidth_deg}°</div>
+							</div>
+							<div className="glass-card p-4">
+								<div className="text-emerald-300 text-sm font-medium mb-1">Antena RX</div>
+								<div className="text-white">{data.antenna.rx_gain_dbi} dBi • {data.antenna.rx_polarization} • {data.antenna.rx_beamwidth_deg}°</div>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Spectrum Analysis */}
+				<div className="glass-card-strong p-8">
 						<div className="flex items-center justify-between mb-6">
 							<div className="flex items-center space-x-3">
 								<div className="icon-wrapper gradient-secondary">
@@ -291,15 +409,73 @@ export default function SignalAnalysisView() {
 						</div>
 					</div>
 
+					{/* Signal Range Chart */}
+					{rangeData && (
+						<div className="glass-card-strong p-8">
+							<div className="flex items-center space-x-3 mb-6">
+								<div className="icon-wrapper gradient-accent">
+									<Target className="w-6 h-6 text-white" />
+								</div>
+								<h2 className="text-2xl font-bold text-white">Alcance de Señal</h2>
+							</div>
+							<div className="h-96">
+								<ResponsiveContainer width="100%" height="100%">
+									<LineChart data={rangeData}>
+										<CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+										<XAxis 
+											dataKey="distance" 
+											tick={{ fill: '#cbd5e1', fontSize: 12 }}
+											tickFormatter={(v) => `${(v / 1000).toFixed(1)} km`}
+											label={{ value: 'Distancia', position: 'insideBottom', offset: -10, style: { textAnchor: 'middle', fill: '#cbd5e1' } }}
+										/>
+										<YAxis 
+											tick={{ fill: '#cbd5e1', fontSize: 12 }}
+											tickFormatter={(v) => `${v} dBm`}
+											label={{ value: 'Potencia Recibida', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#cbd5e1' } }}
+										/>
+										<Tooltip 
+											contentStyle={{ 
+												background: 'rgba(15, 23, 42, 0.95)', 
+												border: '1px solid rgba(255,255,255,0.2)', 
+												color: '#fff',
+												borderRadius: '12px'
+											}}
+											formatter={(value: number) => [`${value.toFixed(2)} dBm`, 'Potencia Recibida']}
+											labelFormatter={(label) => `Distancia: ${(label / 1000).toFixed(1)} km`}
+										/>
+										<Line 
+											type="monotone" 
+											dataKey="power_received" 
+											stroke="#3b82f6" 
+											strokeWidth={3}
+											dot={false}
+											name="Potencia Recibida"
+										/>
+									</LineChart>
+								</ResponsiveContainer>
+							</div>
+						</div>
+					)}
+
 					{/* Action Buttons */}
 					<div className="flex flex-col sm:flex-row gap-4 justify-center">
-						<button className="btn-secondary flex items-center justify-center space-x-2">
-							<Download className="w-5 h-5" />
-							<span>Exportar Datos</span>
+						<button 
+							onClick={handleCompareSystems}
+							className="btn-primary flex items-center justify-center space-x-2"
+						>
+							<GitCompare className="w-5 h-5" />
+							<span>Comparar Sistemas</span>
+						</button>
+						<button 
+							onClick={fetchRangeData}
+							className="btn-secondary flex items-center justify-center space-x-2"
+						>
+							<Target className="w-5 h-5" />
+							<span>Ver Alcance</span>
 						</button>
 						<button className="btn-accent flex items-center justify-center space-x-2">
-							<Share2 className="w-5 h-5" />
-							<span>Compartir Resultados</span>
+							<Download className="w-5 h-5" />
+							<span>Exportar Datos</span>
 						</button>
 					</div>
 				</>
@@ -369,6 +545,13 @@ export default function SignalAnalysisView() {
 					</div>
 				</div>
 			</Modal>
+
+			{/* Comparison Modal */}
+			<ComparisonModal 
+				open={openComparison} 
+				onClose={() => setOpenComparison(false)} 
+				comparisonData={comparisonData}
+			/>
 		</div>
 	);
 }

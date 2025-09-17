@@ -1,5 +1,5 @@
 import { useState, type FC } from 'react';
-import { ConfigModel, CONFIG_LIMITS, SYSTEM_OPTIONS } from '../models/ConfigModel';
+import { ConfigModel, CONFIG_LIMITS, SYSTEM_OPTIONS, type Polarization } from '../models/ConfigModel';
 import { 
   Radio, 
   Zap, 
@@ -30,9 +30,31 @@ export const ConfigView: FC<ConfigViewProps> = ({ onRunSimulation, isLoading = f
       key === 'frequency' ? (value as number) : config.frequency,
       key === 'power' ? (value as number) : config.power,
       key === 'distance' ? (value as number) : config.distance,
-      key === 'system' ? (value as ConfigModel['system']) : config.system
+      key === 'system' ? (value as ConfigModel['system']) : config.system,
+      config.tx_antenna,
+      config.rx_antenna
     );
     setConfig(newConfig);
+  };
+
+  const handleAntennaChange = (
+    side: 'tx' | 'rx',
+    key: 'gain_dbi' | 'polarization' | 'beamwidth_deg',
+    value: number | Polarization
+  ) => {
+    const next = new ConfigModel(
+      config.frequency,
+      config.power,
+      config.distance,
+      config.system,
+      side === 'tx'
+        ? { ...config.tx_antenna, [key]: value as any }
+        : config.tx_antenna,
+      side === 'rx'
+        ? { ...config.rx_antenna, [key]: value as any }
+        : config.rx_antenna
+    );
+    setConfig(next);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -324,6 +346,158 @@ export const ConfigView: FC<ConfigViewProps> = ({ onRunSimulation, isLoading = f
           </div>
         </ParameterCard>
 
+        {/* TX Antenna */}
+        <ParameterCard
+          title="Antena Emisora (TX)"
+          value={`${config.tx_antenna.gain_dbi} dBi, ${config.tx_antenna.polarization}, ${config.tx_antenna.beamwidth_deg}°`}
+          unit=""
+          icon={Settings}
+          color="bg-gradient-to-r from-purple-500 to-purple-600"
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm text-white/70">Ganancia (dBi)</label>
+              <input
+                type="range"
+                min={CONFIG_LIMITS.gain_dbi.min}
+                max={CONFIG_LIMITS.gain_dbi.max}
+                step={CONFIG_LIMITS.gain_dbi.step}
+                value={config.tx_antenna.gain_dbi}
+                onChange={(e) => handleAntennaChange('tx', 'gain_dbi', parseInt(e.target.value))}
+                className="slider-custom"
+                disabled={isLoading}
+              />
+              <input
+                type="number"
+                min={CONFIG_LIMITS.gain_dbi.min}
+                max={CONFIG_LIMITS.gain_dbi.max}
+                step={CONFIG_LIMITS.gain_dbi.step}
+                value={config.tx_antenna.gain_dbi}
+                onChange={(e) => handleAntennaChange('tx', 'gain_dbi', Number(e.target.value))}
+                className="input-field"
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/70">Polarización</label>
+              <div className="flex gap-2">
+                {(['H', 'V'] as Polarization[]).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => handleAntennaChange('tx', 'polarization', p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      config.tx_antenna.polarization === p ? 'bg-purple-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    {p === 'H' ? 'Horizontal' : 'Vertical'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/70">Ancho de haz (°)</label>
+              <input
+                type="range"
+                min={CONFIG_LIMITS.beamwidth_deg.min}
+                max={CONFIG_LIMITS.beamwidth_deg.max}
+                step={CONFIG_LIMITS.beamwidth_deg.step}
+                value={config.tx_antenna.beamwidth_deg}
+                onChange={(e) => handleAntennaChange('tx', 'beamwidth_deg', parseInt(e.target.value))}
+                className="slider-custom"
+                disabled={isLoading}
+              />
+              <input
+                type="number"
+                min={CONFIG_LIMITS.beamwidth_deg.min}
+                max={CONFIG_LIMITS.beamwidth_deg.max}
+                step={CONFIG_LIMITS.beamwidth_deg.step}
+                value={config.tx_antenna.beamwidth_deg}
+                onChange={(e) => handleAntennaChange('tx', 'beamwidth_deg', Number(e.target.value))}
+                className="input-field"
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        </ParameterCard>
+
+        {/* RX Antenna */}
+        <ParameterCard
+          title="Antena Receptora (RX)"
+          value={`${config.rx_antenna.gain_dbi} dBi, ${config.rx_antenna.polarization}, ${config.rx_antenna.beamwidth_deg}°`}
+          unit=""
+          icon={Settings}
+          color="bg-gradient-to-r from-emerald-500 to-emerald-600"
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm text-white/70">Ganancia (dBi)</label>
+              <input
+                type="range"
+                min={CONFIG_LIMITS.gain_dbi.min}
+                max={CONFIG_LIMITS.gain_dbi.max}
+                step={CONFIG_LIMITS.gain_dbi.step}
+                value={config.rx_antenna.gain_dbi}
+                onChange={(e) => handleAntennaChange('rx', 'gain_dbi', parseInt(e.target.value))}
+                className="slider-custom"
+                disabled={isLoading}
+              />
+              <input
+                type="number"
+                min={CONFIG_LIMITS.gain_dbi.min}
+                max={CONFIG_LIMITS.gain_dbi.max}
+                step={CONFIG_LIMITS.gain_dbi.step}
+                value={config.rx_antenna.gain_dbi}
+                onChange={(e) => handleAntennaChange('rx', 'gain_dbi', Number(e.target.value))}
+                className="input-field"
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/70">Polarización</label>
+              <div className="flex gap-2">
+                {(['H', 'V'] as Polarization[]).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => handleAntennaChange('rx', 'polarization', p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      config.rx_antenna.polarization === p ? 'bg-emerald-600 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    {p === 'H' ? 'Horizontal' : 'Vertical'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/70">Ancho de haz (°)</label>
+              <input
+                type="range"
+                min={CONFIG_LIMITS.beamwidth_deg.min}
+                max={CONFIG_LIMITS.beamwidth_deg.max}
+                step={CONFIG_LIMITS.beamwidth_deg.step}
+                value={config.rx_antenna.beamwidth_deg}
+                onChange={(e) => handleAntennaChange('rx', 'beamwidth_deg', parseInt(e.target.value))}
+                className="slider-custom"
+                disabled={isLoading}
+              />
+              <input
+                type="number"
+                min={CONFIG_LIMITS.beamwidth_deg.min}
+                max={CONFIG_LIMITS.beamwidth_deg.max}
+                step={CONFIG_LIMITS.beamwidth_deg.step}
+                value={config.rx_antenna.beamwidth_deg}
+                onChange={(e) => handleAntennaChange('rx', 'beamwidth_deg', Number(e.target.value))}
+                className="input-field"
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        </ParameterCard>
+
         {/* Summary */}
         <div className="glass-card-strong p-6">
           <div className="flex items-center space-x-3 mb-6">
@@ -349,6 +523,18 @@ export const ConfigView: FC<ConfigViewProps> = ({ onRunSimulation, isLoading = f
               <div className="metric-card">
                 <div className="text-warning-400 text-sm font-medium">Sistema</div>
                 <div className="text-2xl font-bold text-white">{config.system}</div>
+              </div>
+              <div className="metric-card col-span-2">
+                <div className="text-purple-300 text-sm font-medium">Antena TX</div>
+                <div className="text-white">
+                  {config.tx_antenna.gain_dbi} dBi • {config.tx_antenna.polarization} • {config.tx_antenna.beamwidth_deg}°
+                </div>
+              </div>
+              <div className="metric-card col-span-2">
+                <div className="text-emerald-300 text-sm font-medium">Antena RX</div>
+                <div className="text-white">
+                  {config.rx_antenna.gain_dbi} dBi • {config.rx_antenna.polarization} • {config.rx_antenna.beamwidth_deg}°
+                </div>
               </div>
             </div>
             <div className="p-4 bg-white/5 rounded-xl border border-white/10">

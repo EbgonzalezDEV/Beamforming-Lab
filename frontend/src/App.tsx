@@ -17,6 +17,8 @@ function Shell() {
 					frequency: config.frequency * 1e6,
 					distance: config.distance,
 					system: config.system,
+					tx_antenna: config.tx_antenna,
+					rx_antenna: config.rx_antenna,
 				}),
 			});
 			navigate('/analysis');
