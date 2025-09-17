@@ -13,6 +13,7 @@ export class ConfigModel {
   public system: '5G' | '5G-A' | '6G';
   public tx_antenna: AntennaConfig;
   public rx_antenna: AntennaConfig;
+  public bandwidth_mhz: number; // MHz
 
   constructor(
     frequency: number = 3500,
@@ -20,7 +21,8 @@ export class ConfigModel {
     distance: number = 200,
     system: '5G' | '5G-A' | '6G' = '5G',
     tx_antenna: AntennaConfig = { gain_dbi: 15, polarization: 'H', beamwidth_deg: 65 },
-    rx_antenna: AntennaConfig = { gain_dbi: 15, polarization: 'H', beamwidth_deg: 65 }
+    rx_antenna: AntennaConfig = { gain_dbi: 15, polarization: 'H', beamwidth_deg: 65 },
+    bandwidth_mhz?: number
   ) {
     this.frequency = frequency;
     this.power = power;
@@ -28,6 +30,9 @@ export class ConfigModel {
     this.system = system;
     this.tx_antenna = tx_antenna;
     this.rx_antenna = rx_antenna;
+    // Default bandwidth per system if not provided
+    const defaults: Record<'5G' | '5G-A' | '6G', number> = { '5G': 20, '5G-A': 80, '6G': 200 };
+    this.bandwidth_mhz = bandwidth_mhz ?? defaults[system];
   }
 
   public validate(): ConfigValidation {
@@ -39,6 +44,7 @@ export class ConfigModel {
     if (this.rx_antenna.gain_dbi < -10 || this.rx_antenna.gain_dbi > 30) errors.push('La ganancia RX debe estar entre -10 y 30 dBi');
     if (this.tx_antenna.beamwidth_deg <= 0 || this.tx_antenna.beamwidth_deg > 360) errors.push('El ancho de haz TX debe estar entre 0 y 360°');
     if (this.rx_antenna.beamwidth_deg <= 0 || this.rx_antenna.beamwidth_deg > 360) errors.push('El ancho de haz RX debe estar entre 0 y 360°');
+    if (this.bandwidth_mhz <= 0 || this.bandwidth_mhz > 1000) errors.push('El ancho de banda debe ser mayor que 0 y menor a 1000 MHz');
     return { isValid: errors.length === 0, errors };
   }
 
@@ -49,7 +55,8 @@ export class ConfigModel {
       distance: this.distance,
       system: this.system,
       tx_antenna: this.tx_antenna,
-      rx_antenna: this.rx_antenna
+      rx_antenna: this.rx_antenna,
+      bandwidth_hz: this.bandwidth_mhz * 1e6
     };
   }
 }

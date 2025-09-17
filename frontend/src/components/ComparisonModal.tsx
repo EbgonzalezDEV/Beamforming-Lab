@@ -40,6 +40,7 @@ interface ComparisonData {
     power_dbm: number;
     frequency_hz: number;
     distance_m: number;
+    bandwidth_hz?: number;
   };
 }
 
@@ -137,7 +138,7 @@ export default function ComparisonModal({ open, onClose, comparisonData }: Compa
         {/* Parámetros de comparación */}
         <div className="glass-card p-4">
           <h3 className="text-lg font-semibold text-white mb-3">Parámetros de Comparación</h3>
-          <div className="grid grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-white/60">Potencia:</span>
               <div className="font-semibold text-white">{parameters.power_dbm} dBm</div>
@@ -149,6 +150,10 @@ export default function ComparisonModal({ open, onClose, comparisonData }: Compa
             <div>
               <span className="text-white/60">Distancia:</span>
               <div className="font-semibold text-white">{parameters.distance_m} m</div>
+            </div>
+            <div>
+              <span className="text-white/60">Ancho de banda:</span>
+              <div className="font-semibold text-white">{parameters.bandwidth_hz ? (parameters.bandwidth_hz / 1e6).toFixed(0) : '-'} MHz</div>
             </div>
           </div>
         </div>
@@ -231,11 +236,15 @@ export default function ComparisonModal({ open, onClose, comparisonData }: Compa
               <h3 className="text-lg font-semibold text-white mb-4">Alcance de Potencia Recibida</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart>
+                  <LineChart margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                     <XAxis 
                       dataKey="distance" 
+                      type="number"
+                      domain={["dataMin", "dataMax"]}
+                      tickCount={6}
                       tick={{ fill: '#cbd5e1', fontSize: 12 }}
+                      tickFormatter={(v: number) => (v < 1 ? v.toFixed(2) : v.toFixed(1))}
                       label={{ value: 'Distancia (km)', position: 'insideBottom', offset: -10, style: { textAnchor: 'middle', fill: '#cbd5e1' } }}
                     />
                     <YAxis 
@@ -251,7 +260,7 @@ export default function ComparisonModal({ open, onClose, comparisonData }: Compa
                         borderRadius: '12px'
                       }}
                       formatter={(value: number) => [`${value.toFixed(2)} dBm`, 'Potencia Recibida']}
-                      labelFormatter={(label) => `Distancia: ${label} km`}
+                      labelFormatter={(label: number) => `Distancia: ${(label < 1 ? label.toFixed(2) : label.toFixed(1))} km`}
                     />
                     <Legend />
                     {rangeChartData.map(({ system, color, data }) => (
@@ -276,11 +285,15 @@ export default function ComparisonModal({ open, onClose, comparisonData }: Compa
               <h3 className="text-lg font-semibold text-white mb-4">Alcance de SNR</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart>
+                  <LineChart margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                     <XAxis 
                       dataKey="distance" 
+                      type="number"
+                      domain={["dataMin", "dataMax"]}
+                      tickCount={6}
                       tick={{ fill: '#cbd5e1', fontSize: 12 }}
+                      tickFormatter={(v: number) => (v < 1 ? v.toFixed(2) : v.toFixed(1))}
                       label={{ value: 'Distancia (km)', position: 'insideBottom', offset: -10, style: { textAnchor: 'middle', fill: '#cbd5e1' } }}
                     />
                     <YAxis 
@@ -296,7 +309,7 @@ export default function ComparisonModal({ open, onClose, comparisonData }: Compa
                         borderRadius: '12px'
                       }}
                       formatter={(value: number) => [`${value.toFixed(2)} dB`, 'SNR']}
-                      labelFormatter={(label) => `Distancia: ${label} km`}
+                      labelFormatter={(label: number) => `Distancia: ${(label < 1 ? label.toFixed(2) : label.toFixed(1))} km`}
                     />
                     <Legend />
                     {rangeChartData.map(({ system, color, data }) => (

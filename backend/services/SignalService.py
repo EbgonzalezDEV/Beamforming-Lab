@@ -17,7 +17,8 @@ class SignalService:
 	def simulate(self, power_dbm: float, frequency_hz: float, distance_m: float, system: str = '5G',
 				tx_gain_dbi: float = 0.0, rx_gain_dbi: float = 0.0,
 				tx_polarization: str = 'H', rx_polarization: str = 'H',
-				tx_beamwidth_deg: float = 65.0, rx_beamwidth_deg: float = 65.0):
+				tx_beamwidth_deg: float = 65.0, rx_beamwidth_deg: float = 65.0,
+				bandwidth_hz: float | None = None):
 		fspl_db = float(self.fspl(distance_m, frequency_hz))
 		power_tx_dbm = float(power_dbm)
 
@@ -27,7 +28,8 @@ class SignalService:
 			'5G-A': 80e6, # 80 MHz (carrier aggregation / mejoras)
 			'6G': 200e6,  # 200 MHz (ultra wideband)
 		}
-		bandwidth_hz = float(bandwidth_map.get(system, 20e6))
+		# Prefer user-provided bandwidth if given; otherwise pick system default
+		bandwidth_hz = float(bandwidth_hz) if bandwidth_hz is not None else float(bandwidth_map.get(system, 20e6))
 
 		# Ganancia efectiva del sistema por mejoras
 		system_gain = 0.0
@@ -82,6 +84,10 @@ class SignalService:
 			"spectrum": spectrum[:2000],
 			"system": system,
 			"bandwidth_hz": bandwidth_hz,
+			# Echo input parameters for frontend reuse
+			"power_dbm": power_tx_dbm,
+			"frequency_hz": float(frequency_hz),
+			"distance_m": float(distance_m),
 			"antenna": {
 				"tx_gain_dbi": tx_gain_dbi,
 				"rx_gain_dbi": rx_gain_dbi,
@@ -105,9 +111,17 @@ class SignalService:
 			"bandwidth_hz": None,
 		}
 
-	def generate_signal_range_data(self, power_dbm: float, frequency_hz: float, system: str = '5G') -> List[Dict[str, Any]]:
-		"""Genera datos de alcance de señal para diferentes distancias"""
-		distances = np.linspace(100, 10000, 50)  # 100m a 10km
+	def generate_signal_range_data(self, power_dbm: float, frequency_hz: float, system: str = '5G', bandwidth_hz: float | None = None, base_distance_m: float | None = None) -> List[Dict[str, Any]]:
+		"""Genera datos de alcance de señal para diferentes distancias.
+		Si se proporciona base_distance_m, el rango se escala alrededor de ese valor (0.1x .. 3x).
+		"""
+		# Ajustar el rango de distancias según la distancia base del usuario
+		if base_distance_m is None or base_distance_m <= 0:
+			min_d, max_d = 100.0, 10_000.0
+		else:
+			min_d = max(10.0, float(base_distance_m) * 0.1)
+			max_d = max(100.0, float(base_distance_m) * 3.0)
+		distances = np.linspace(min_d, max_d, 50)
 		range_data = []
 		
 		bandwidth_map = {
@@ -115,7 +129,7 @@ class SignalService:
 			'5G-A': 80e6,
 			'6G': 200e6,
 		}
-		bandwidth_hz = bandwidth_map.get(system, 20e6)
+		bandwidth_hz = float(bandwidth_hz) if bandwidth_hz is not None else float(bandwidth_map.get(system, 20e6))
 		
 		# Ganancia del sistema
 		system_gain = 0.0
@@ -142,13 +156,13 @@ class SignalService:
 		
 		return range_data
 
-	def compare_all_systems(self, power_dbm: float, frequency_hz: float, distance_m: float) -> Dict[str, Any]:
+	def compare_all_systems(self, power_dbm: float, frequency_hz: float, distance_m: float, bandwidth_hz: float | None = None) -> Dict[str, Any]:
 		"""Compara los 3 sistemas (5G, 5G-A, 6G) con los mismos parámetros"""
 		systems = ['5G', '5G-A', '6G']
 		comparison_results = {}
 		
 		for system in systems:
-			results = self.simulate(power_dbm, frequency_hz, distance_m, system)
+			results = self.simulate(power_dbm, frequency_hz, distance_m, system, bandwidth_hz=bandwidth_hz)
 			comparison_results[system] = {
 				"power_received": results["power_received"],
 				"snr": results["snr"],
@@ -160,7 +174,7 @@ class SignalService:
 		# Generar datos de alcance para cada sistema
 		range_comparison = {}
 		for system in systems:
-			range_comparison[system] = self.generate_signal_range_data(power_dbm, frequency_hz, system)
+			range_comparison[system] = self.generate_signal_range_data(power_dbm, frequency_hz, system, bandwidth_hz=bandwidth_hz, base_distance_m=distance_m)
 		
 		self._comparison_data = {
 			"systems": comparison_results,
@@ -168,7 +182,8 @@ class SignalService:
 			"parameters": {
 				"power_dbm": power_dbm,
 				"frequency_hz": frequency_hz,
-				"distance_m": distance_m
+				"distance_m": distance_m,
+				"bandwidth_hz": bandwidth_hz,
 			}
 		}
 		

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line, BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, Radar, Brush } from 'recharts';
 import { 
   BarChart3, 
   Zap, 
@@ -35,6 +35,10 @@ interface ResultsDto {
         polarization_mismatch_loss_db: number;
         antenna_gain_db: number;
     } | null;
+    // Echoed input parameters
+    power_dbm?: number | null;
+    frequency_hz?: number | null;
+    distance_m?: number | null;
 }
 
 export default function SignalAnalysisView() {
@@ -86,10 +90,11 @@ export default function SignalAnalysisView() {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					power: 30, // 30 dBm potencia de transmisión típica
-					frequency: (data.system === '5G' ? 2400 : data.system === '5G-A' ? 3500 : 6000) * 1e6,
-					distance: 1000, // No se usa en el cálculo de alcance
-					system: data.system || '5G'
+					power: data.power_dbm ?? 30,
+					frequency: data.frequency_hz ?? ((data.system === '5G' ? 2400 : data.system === '5G-A' ? 3500 : 6000) * 1e6),
+					distance: data.distance_m ?? 1000,
+					system: data.system || '5G',
+					bandwidth_hz: data.bandwidth_hz ?? undefined,
 				}),
 			});
 			if (res.ok) {
@@ -111,10 +116,11 @@ export default function SignalAnalysisView() {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					power: 30, // 30 dBm potencia de transmisión típica
-					frequency: (data.system === '5G' ? 2400 : data.system === '5G-A' ? 3500 : 6000) * 1e6,
-					distance: 1000,
-					system: data.system || '5G'
+					power: data.power_dbm ?? 30,
+					frequency: data.frequency_hz ?? ((data.system === '5G' ? 2400 : data.system === '5G-A' ? 3500 : 6000) * 1e6),
+					distance: data.distance_m ?? 1000,
+					system: data.system || '5G',
+					bandwidth_hz: data.bandwidth_hz ?? undefined,
 				}),
 			});
 			if (res.ok) {
@@ -141,6 +147,58 @@ export default function SignalAnalysisView() {
 		if (dbm == null) return '-';
 		return powerUnit === 'dBm' ? `${dbm.toFixed(2)} dBm` : `${(dbm - 30).toFixed(2)} dBW`;
 	};
+
+	const systemGainDb = useMemo(() => {
+		if (!data?.system) return 0;
+		if (data.system === '5G-A') return 3;
+		if (data.system === '6G') return 6;
+		return 0;
+	}, [data?.system]);
+
+	const linkBudget = useMemo(() => {
+		if (!data) return null;
+		const antennaGain = data.antenna?.antenna_gain_db ?? 0;
+		const polLoss = data.antenna?.polarization_mismatch_loss_db ?? 0;
+		const fspl = data.path_loss ?? 0;
+		const pr = data.power_received ?? 0;
+		const pt = pr + fspl - systemGainDb - antennaGain + polLoss;
+		return {
+			pt,
+			systemGainDb,
+			antennaGain,
+			fspl,
+			polLoss,
+			pr,
+		};
+	}, [data, systemGainDb]);
+
+	const linkBudgetBars = useMemo(() => {
+		if (!linkBudget) return [] as any[];
+		return [
+			{ name: 'TX Power', value: linkBudget.pt },
+			{ name: 'System Gain', value: linkBudget.systemGainDb },
+			{ name: 'Antenna Gain', value: linkBudget.antennaGain },
+			{ name: 'FSPL (loss)', value: -Math.abs(linkBudget.fspl) },
+			{ name: 'Pol. Loss', value: -Math.abs(linkBudget.polLoss) },
+			{ name: 'RX Power', value: linkBudget.pr },
+		];
+	}, [linkBudget]);
+
+	const antennaPatterns = useMemo(() => {
+		if (!data?.antenna) return null;
+		const sampleAngles = Array.from({ length: 24 }, (_, i) => i * 15); // 0..345°
+		const pattern = (hpbw: number) => {
+			return sampleAngles.map((deg) => {
+				const x = deg / (hpbw / 2);
+				const gain = -12 * x * x; // dB
+				return { angle: `${deg}°`, gain: Math.max(gain, -30) };
+			});
+		};
+		return {
+			tx: pattern(data.antenna.tx_beamwidth_deg),
+			rx: pattern(data.antenna.rx_beamwidth_deg),
+		};
+	}, [data?.antenna]);
 
 	const getSNRStatus = (snr: number | null) => {
 		if (snr === null) return { status: 'unknown', color: 'text-white/60', bg: 'bg-white/10' };
@@ -307,6 +365,48 @@ export default function SignalAnalysisView() {
 								<div className="text-white/60 text-sm">Contexto de simulación</div>
 							</div>
 						</div>
+
+						{linkBudget && (
+							<div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+								<div className="glass-card p-4">
+									<div className="text-white font-semibold mb-3">Presupuesto de Enlace</div>
+									<div className="h-64">
+										<ResponsiveContainer width="100%" height="100%">
+											<BarChart data={linkBudgetBars}>
+												<CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+												<XAxis dataKey="name" tick={{ fill: '#cbd5e1', fontSize: 12 }} />
+												<YAxis tick={{ fill: '#cbd5e1', fontSize: 12 }} tickFormatter={(v) => `${v} dB`} />
+												<Tooltip contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '12px' }} />
+												<Bar dataKey="value" fill="#22c55e" name="dB" />
+											</BarChart>
+										</ResponsiveContainer>
+									</div>
+								</div>
+								{antennaPatterns && (
+									<div className="glass-card p-4">
+										<div className="text-white font-semibold mb-3">Patrón de Antenas (idealizado)</div>
+										<div className="h-64">
+											<ResponsiveContainer width="100%" height="100%">
+												<RadarChart data={antennaPatterns.tx} outerRadius="80%">
+													<PolarGrid />
+													<PolarAngleAxis dataKey="angle" tick={{ fill: '#cbd5e1', fontSize: 10 }} />
+													<Radar name="TX" dataKey="gain" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.4} />
+												</RadarChart>
+											</ResponsiveContainer>
+										</div>
+										<div className="h-64 mt-4">
+											<ResponsiveContainer width="100%" height="100%">
+												<RadarChart data={antennaPatterns.rx} outerRadius="80%">
+													<PolarGrid />
+													<PolarAngleAxis dataKey="angle" tick={{ fill: '#cbd5e1', fontSize: 10 }} />
+													<Radar name="RX" dataKey="gain" stroke="#34d399" fill="#34d399" fillOpacity={0.4} />
+												</RadarChart>
+											</ResponsiveContainer>
+										</div>
+									</div>
+								)}
+							</div>
+						)}
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
 							<div className="glass-card p-4">
 								<div className="text-purple-300 text-sm font-medium mb-1">Antena TX</div>
@@ -322,92 +422,98 @@ export default function SignalAnalysisView() {
 
 				{/* Spectrum Analysis */}
 				<div className="glass-card-strong p-8">
-						<div className="flex items-center justify-between mb-6">
-							<div className="flex items-center space-x-3">
-								<div className="icon-wrapper gradient-secondary">
-									<Wifi className="w-6 h-6 text-white" />
-								</div>
-								<h2 className="text-2xl font-bold text-white">Análisis Espectral (FFT)</h2>
+					<div className="flex items-center justify-between mb-6">
+						<div className="flex items-center space-x-3">
+							<div className="icon-wrapper gradient-secondary">
+								<Wifi className="w-6 h-6 text-white" />
 							</div>
-							<div className="flex items-center space-x-3">
-								<div className="flex items-center space-x-2">
-									<span className="text-sm text-white/70">Unidad:</span>
-									<div className="flex gap-1">
-										{(['Hz','kHz','MHz','GHz'] as const).map(u => (
-											<button 
-												key={u} 
-												onClick={() => setFreqUnit(u)} 
-												className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
-													freqUnit === u 
-														? 'bg-primary-600 text-white' 
-														: 'bg-white/10 text-white/70 hover:bg-white/20'
-												}`}
-											>
-												{u}
-											</button>
-										))}
-									</div>
+							<h2 className="text-2xl font-bold text-white">Análisis Espectral (FFT)</h2>
+						</div>
+						<div className="flex items-center space-x-3">
+							<div className="flex items-center space-x-2">
+								<span className="text-sm text-white/70">Unidad:</span>
+								<div className="flex gap-1">
+									{(['Hz','kHz','MHz','GHz'] as const).map(u => (
+										<button 
+											key={u} 
+											onClick={() => setFreqUnit(u)} 
+											className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${
+												freqUnit === u 
+													? 'bg-primary-600 text-white' 
+													: 'bg-white/10 text-white/70 hover:bg-white/20'
+											}`}
+										>
+											{u}
+										</button>
+									))}
 								</div>
-								<button 
-									onClick={() => setOpenSpectrum(true)} 
-									className="btn-primary flex items-center space-x-2"
-								>
-									<Maximize2 className="w-4 h-4" />
-									<span>Pantalla completa</span>
-								</button>
 							</div>
+							<button 
+								onClick={() => setOpenSpectrum(true)} 
+								className="btn-primary flex items-center space-x-2"
+							>
+								<Maximize2 className="w-4 h-4" />
+								<span>Pantalla completa</span>
+							</button>
 						</div>
-						
-						<div className="h-96 rounded-xl overflow-hidden">
-							<ResponsiveContainer width="100%" height="100%">
-								<AreaChart data={data.spectrum}>
-									<CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-									<XAxis 
-										dataKey="freq" 
-										tick={{ fill: '#cbd5e1', fontSize: 12 }} 
-										tickFormatter={(v) => formatFreq(v)} 
-									/>
-									<YAxis 
-										tick={{ fill: '#cbd5e1', fontSize: 12 }} 
-										tickFormatter={(v) => `${v} dB`} 
-									/>
-									<Tooltip 
-										contentStyle={{ 
-											background: 'rgba(15, 23, 42, 0.95)', 
-											border: '1px solid rgba(255,255,255,0.2)', 
-											color: '#fff',
-											borderRadius: '12px',
-											backdropFilter: 'blur(10px)'
-										}} 
-									/>
-									<Area 
-										type="monotone" 
-										dataKey="magnitude" 
-										stroke="url(#colorGradient)" 
-										fill="url(#colorGradient)" 
-										fillOpacity={0.3}
-										strokeWidth={2}
-									/>
-									<defs>
-										<linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-											<stop offset="0%" stopColor="#3b82f6" />
-											<stop offset="100%" stopColor="#1d4ed8" />
-										</linearGradient>
-									</defs>
-								</AreaChart>
-							</ResponsiveContainer>
-						</div>
-						
-						<div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
-							<div className="flex items-start space-x-3">
-								<Info className="w-5 h-5 text-primary-400 mt-0.5" />
-								<div className="text-sm text-white/70">
-									<strong>Análisis FFT:</strong> La transformada rápida de Fourier muestra la distribución 
-									espectral de la señal. Los picos indican componentes de frecuencia dominantes.
-								</div>
+					</div>
+					<div className="h-96 rounded-xl overflow-hidden">
+						<ResponsiveContainer width="100%" height="100%">
+							<AreaChart data={data.spectrum} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+								<CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+								<XAxis 
+									dataKey="freq" 
+									type="number"
+									domain={["dataMin", "dataMax"]}
+									tickCount={8}
+									tick={{ fill: '#cbd5e1', fontSize: 12 }} 
+									tickFormatter={(v) => formatFreq(v)} 
+								/>
+								<YAxis 
+									domain={["dataMin", "dataMax"]}
+									tickCount={6}
+									tick={{ fill: '#cbd5e1', fontSize: 12 }} 
+									tickFormatter={(v) => `${v} dB`} 
+								/>
+								<Tooltip 
+									contentStyle={{ 
+										background: 'rgba(15, 23, 42, 0.95)', 
+										border: '1px solid rgba(255,255,255,0.2)', 
+										color: '#fff',
+										borderRadius: '12px',
+									}} 
+									formatter={(value: number) => [`${value.toFixed(2)} dB`, 'Magnitud']}
+									labelFormatter={(label: number) => `f = ${formatFreq(label)}`}
+								/>
+								<Area 
+									type="monotone" 
+									dataKey="magnitude" 
+									stroke="url(#colorGradient)" 
+									fill="url(#colorGradient)" 
+									fillOpacity={0.3}
+									strokeWidth={2}
+								/>
+								<defs>
+									<linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="0%" stopColor="#3b82f6" />
+										<stop offset="100%" stopColor="#1d4ed8" />
+									</linearGradient>
+								</defs>
+								<Brush dataKey="freq" height={20} stroke="#64748b" travellerWidth={8}
+									tickFormatter={() => ''} />
+							</AreaChart>
+						</ResponsiveContainer>
+					</div>
+					<div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
+						<div className="flex items-start space-x-3">
+							<Info className="w-5 h-5 text-primary-400 mt-0.5" />
+							<div className="text-sm text-white/70">
+								<strong>Análisis FFT:</strong> La transformada rápida de Fourier muestra la distribución 
+								espectral de la señal. Los picos indican componentes de frecuencia dominantes.
 							</div>
 						</div>
 					</div>
+				</div>
 
 					{/* Signal Range Chart */}
 					{rangeData && (
@@ -481,77 +587,88 @@ export default function SignalAnalysisView() {
 				</>
 			)}
 
-			{/* Full Screen Spectrum Modal */}
-			<Modal open={openSpectrum} onClose={() => setOpenSpectrum(false)} title="Análisis Espectral Completo">
-				<div className="space-y-6">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center space-x-2">
-							<span className="text-sm text-white/70">Unidad de frecuencia:</span>
-							<div className="flex gap-1">
-								{(['Hz','kHz','MHz','GHz'] as const).map(u => (
-									<button 
-										key={u} 
-										onClick={() => setFreqUnit(u)} 
-										className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-											freqUnit === u 
-												? 'bg-primary-600 text-white' 
-												: 'bg-white/10 text-white/70 hover:bg-white/20'
-										}`}
-									>
-										{u}
-									</button>
-								))}
+				{/* Full Screen Spectrum Modal */}
+				<Modal open={openSpectrum} onClose={() => setOpenSpectrum(false)} title="Análisis Espectral Completo">
+					<div className="space-y-6">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center space-x-2">
+								<span className="text-sm text-white/70">Unidad de frecuencia:</span>
+								<div className="flex gap-1">
+									{(['Hz','kHz','MHz','GHz'] as const).map(u => (
+										<button 
+											key={u} 
+											onClick={() => setFreqUnit(u)} 
+											className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+												freqUnit === u 
+													? 'bg-primary-600 text-white' 
+													: 'bg-white/10 text-white/70 hover:bg-white/20'
+											}`}
+										>
+											{u}
+										</button>
+									))}
+								</div>
 							</div>
 						</div>
+						<div className="h-[70vh] rounded-xl overflow-hidden">
+							<ResponsiveContainer width="100%" height="100%">
+								<AreaChart data={data?.spectrum ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+									<CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+									<XAxis 
+										dataKey="freq" 
+										type="number"
+										domain={["dataMin", "dataMax"]}
+										tickCount={10}
+										tick={{ fill: '#cbd5e1', fontSize: 14 }} 
+										tickFormatter={(v) => formatFreq(v)} 
+									/>
+									<YAxis 
+										domain={["dataMin", "dataMax"]}
+										tickCount={8}
+										tick={{ fill: '#cbd5e1', fontSize: 14 }} 
+										tickFormatter={(v) => `${v} dB`} 
+									/>
+									<Tooltip 
+										contentStyle={{ 
+											background: 'rgba(15, 23, 42, 0.95)', 
+											border: '1px solid rgba(255,255,255,0.2)', 
+											color: '#fff',
+											borderRadius: '12px',
+											backdropFilter: 'blur(10px)'
+										}} 
+										formatter={(value: number) => [`${value.toFixed(2)} dB`, 'Magnitud']}
+										labelFormatter={(label: number) => `f = ${formatFreq(label)}`}
+									/>
+									<Area 
+										type="monotone" 
+										dataKey="magnitude" 
+										stroke="url(#colorGradient)" 
+										fill="url(#colorGradient)" 
+										fillOpacity={0.3}
+										strokeWidth={3}
+									/>
+									<defs>
+										<linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+											<stop offset="0%" stopColor="#3b82f6" />
+											<stop offset="100%" stopColor="#1d4ed8" />
+										</linearGradient>
+									</defs>
+									<Brush dataKey="freq" height={24} stroke="#64748b" travellerWidth={10}
+										tickFormatter={() => ''} />
+								</AreaChart>
+							</ResponsiveContainer>
+						</div>
 					</div>
-					<div className="h-[70vh] rounded-xl overflow-hidden">
-						<ResponsiveContainer width="100%" height="100%">
-							<AreaChart data={data?.spectrum ?? []}>
-								<CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-								<XAxis 
-									dataKey="freq" 
-									tick={{ fill: '#cbd5e1', fontSize: 14 }} 
-									tickFormatter={(v) => formatFreq(v)} 
-								/>
-								<YAxis 
-									tick={{ fill: '#cbd5e1', fontSize: 14 }} 
-									tickFormatter={(v) => `${v} dB`} 
-								/>
-								<Tooltip 
-									contentStyle={{ 
-										background: 'rgba(15, 23, 42, 0.95)', 
-										border: '1px solid rgba(255,255,255,0.2)', 
-										color: '#fff',
-										borderRadius: '12px',
-										backdropFilter: 'blur(10px)'
-									}} 
-								/>
-								<Area 
-									type="monotone" 
-									dataKey="magnitude" 
-									stroke="url(#colorGradient)" 
-									fill="url(#colorGradient)" 
-									fillOpacity={0.3}
-									strokeWidth={3}
-								/>
-								<defs>
-									<linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-										<stop offset="0%" stopColor="#3b82f6" />
-										<stop offset="100%" stopColor="#1d4ed8" />
-									</linearGradient>
-								</defs>
-							</AreaChart>
-						</ResponsiveContainer>
-					</div>
-				</div>
-			</Modal>
+				</Modal>
 
-			{/* Comparison Modal */}
-			<ComparisonModal 
-				open={openComparison} 
-				onClose={() => setOpenComparison(false)} 
-				comparisonData={comparisonData}
-			/>
-		</div>
-	);
-}
+				{/* Comparison Modal */}
+				<ComparisonModal 
+					open={openComparison} 
+					onClose={() => setOpenComparison(false)} 
+					comparisonData={comparisonData}
+				/>
+			</>
+			)}
+  		</div>
+  		);
+  	}

@@ -58,16 +58,20 @@
   }
   
   .slider-custom {
-    @apply w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer;
+    @apply w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer transition-all duration-200 ease-out;
   }
   
   .slider-custom::-webkit-slider-thumb {
-    @apply appearance-none h-6 w-6 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 cursor-pointer shadow-lg;
+    @apply appearance-none h-6 w-6 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 cursor-pointer shadow-lg transition-transform duration-200 ease-out;
   }
+  .slider-custom:active::-webkit-slider-thumb { transform: scale(1.05); }
+  .slider-custom:hover::-webkit-slider-thumb { transform: scale(1.03); }
   
   .slider-custom::-moz-range-thumb {
-    @apply h-6 w-6 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 cursor-pointer border-0 shadow-lg;
+    @apply h-6 w-6 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 cursor-pointer border-0 shadow-lg transition-transform duration-200 ease-out;
   }
+  .slider-custom:active::-moz-range-thumb { transform: scale(1.05); }
+  .slider-custom:hover::-moz-range-thumb { transform: scale(1.03); }
   
   .metric-card {
     @apply glass-card p-6 hover:bg-white/10 transition-all duration-300;

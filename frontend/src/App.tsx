@@ -19,6 +19,7 @@ function Shell() {
 					system: config.system,
 					tx_antenna: config.tx_antenna,
 					rx_antenna: config.rx_antenna,
+                bandwidth_hz: config.bandwidth_mhz * 1e6,
 				}),
 			});
 			navigate('/analysis');

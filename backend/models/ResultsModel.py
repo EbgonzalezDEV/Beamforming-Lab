@@ -26,4 +26,9 @@ class ResultsModel(BaseModel):
 	system: Optional[str]
 	bandwidth_hz: Optional[float] = None
 	antenna: Optional[AntennaResult] = None
+	range: Optional[float] = None
+	# Echo back input parameters for frontend reuse
+	power_dbm: Optional[float] = None
+	frequency_hz: Optional[float] = None
+	distance_m: Optional[float] = None
 

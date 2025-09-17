@@ -16,3 +16,5 @@ class ConfigModel(BaseModel):
 	# Antennas: transmitter and receiver
 	tx_antenna: AntennaConfig = Field(default_factory=AntennaConfig, description='Transmitter antenna configuration')
 	rx_antenna: AntennaConfig = Field(default_factory=AntennaConfig, description='Receiver antenna configuration')
+	# Optional user-selected bandwidth (Hz). If not provided, service will pick a system default.
+	bandwidth_hz: Optional[float] = Field(None, description='Channel bandwidth in Hz (optional override)', gt=0)

@@ -6,6 +6,10 @@ services:
       - "8000:8000"
     environment:
       - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
     networks:
       - beamforming-net
     healthcheck:
@@ -22,9 +26,15 @@ services:
       - "3000:5173"
     environment:
       - VITE_BACKEND_URL=http://backend:8000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     depends_on:
       backend:
         condition: service_healthy
+    volumes:
+      - ./frontend:/app
+      # Keep container node_modules from being shadowed by host mount
+      - /app/node_modules
     networks:
       - beamforming-net
 
