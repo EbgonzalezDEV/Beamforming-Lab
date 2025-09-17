@@ -563,27 +563,7 @@ export default function SignalAnalysisView() {
 						</div>
 					)}
 
-					{/* Action Buttons */}
-					<div className="flex flex-col sm:flex-row gap-4 justify-center">
-						<button 
-							onClick={handleCompareSystems}
-							className="btn-primary flex items-center justify-center space-x-2"
-						>
-							<GitCompare className="w-5 h-5" />
-							<span>Comparar Sistemas</span>
-						</button>
-						<button 
-							onClick={fetchRangeData}
-							className="btn-secondary flex items-center justify-center space-x-2"
-						>
-							<Target className="w-5 h-5" />
-							<span>Ver Alcance</span>
-						</button>
-						<button className="btn-accent flex items-center justify-center space-x-2">
-							<Download className="w-5 h-5" />
-							<span>Exportar Datos</span>
-						</button>
-					</div>
+					{/* Action Buttons removed from here to be rendered outside the conditional */}
 				</>
 			)}
 
@@ -667,8 +647,33 @@ export default function SignalAnalysisView() {
 					onClose={() => setOpenComparison(false)} 
 					comparisonData={comparisonData}
 				/>
-			</>
-			)}
-  		</div>
-  		);
-  	}
+
+				{/* Always-visible Action Buttons */}
+				<div className="flex flex-col sm:flex-row gap-4 justify-center">
+					<button 
+						onClick={handleCompareSystems}
+						disabled={!data}
+						className={`btn-primary flex items-center justify-center space-x-2 ${!data ? 'opacity-50 cursor-not-allowed' : ''}`}
+					>
+						<GitCompare className="w-5 h-5" />
+						<span>Comparar Sistemas</span>
+					</button>
+					<button 
+						onClick={fetchRangeData}
+						disabled={!data}
+						className={`btn-secondary flex items-center justify-center space-x-2 ${!data ? 'opacity-50 cursor-not-allowed' : ''}`}
+					>
+						<Target className="w-5 h-5" />
+						<span>Ver Alcance</span>
+					</button>
+					<button 
+						disabled={!data}
+						className={`btn-accent flex items-center justify-center space-x-2 ${!data ? 'opacity-50 cursor-not-allowed' : ''}`}
+					>
+						<Download className="w-5 h-5" />
+						<span>Exportar Datos</span>
+					</button>
+				</div>
+			</div>
+		);
+	}
